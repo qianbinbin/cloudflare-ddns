@@ -1,12 +1,11 @@
 [Unit]
-Description=Dynamically Update Your DNS Records in Cloudflare
+Description=Dynamically Update DNS Records for %i in Cloudflare
 Documentation=https://github.com/qianbinbin/cloudflare-ddns
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-DynamicUser=yes
-EnvironmentFile=/etc/default/cloudflare-ddns
+EnvironmentFile=/usr/local/etc/cloudflare-ddns/%i
 ExecStart=/usr/local/bin/cloudflare-ddns $CFDDNS_OPTS
 
 [Install]

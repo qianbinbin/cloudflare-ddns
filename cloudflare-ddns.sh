@@ -6,6 +6,8 @@
 # cloudflare-ddns: Dynamically update your DNS records in Cloudflare
 # https://github.com/qianbinbin/cloudflare-ddns
 
+# shellcheck disable=SC2086
+
 ZONE_NAME=
 ZONE_ID=
 RECORD_NAME=
@@ -14,6 +16,7 @@ RECORD_TYPE=0
 PROXY=false
 TTL=1
 RENEW_INTERVAL=$((60 * 5))
+MAILTO=
 
 IPV4_SERVICES=$(
   cat <<-END
@@ -49,8 +52,8 @@ Examples:
   # update A record for 'ddns.example.com'
   $(basename "$0") --zone-name example.com --record-name ddns.example.com
 
-  # update AAAA record for 'ddns.example.com'
-  $(basename "$0") -z example.com -r ddns.example.com -6
+  # update AAAA record for 'ddns.example.com' and notify admin
+  $(basename "$0") -z example.com -r ddns.example.com -6 -m admin
 
   # update both A and AAAA records for 'ddns.example.com'
   $(basename "$0") -z example.com -r ddns.example.com -4 -6
@@ -70,6 +73,10 @@ Options:
                             for Enterprise zones (default: $TTL)
   -i, --renew-interval <num>
                             renew interval in seconds (default: $RENEW_INTERVAL)
+  -m, --mail-to <addr>      send an email to <addr> when a record is created or
+                            renewed; <addr> can be a user or an email address
+                            (MTA configuration required for email); can be used
+                            several times
   -h, --help                display this help and exit
 
 Home page: <https://github.com/qianbinbin/cloudflare-ddns>
@@ -145,6 +152,11 @@ while [ $# -gt 0 ]; do
     RENEW_INTERVAL="$2"
     shift 2
     ;;
+  -m | --mail-to)
+    [ -n "$2" ] || _exit
+    MAILTO="$MAILTO $2"
+    shift 2
+    ;;
   -h | --help)
     error "$USAGE" && exit
     ;;
@@ -170,6 +182,8 @@ if ! [ "$RENEW_INTERVAL" -gt 0 ] 2>/dev/null; then
   error "Invalid renew interval '$RENEW_INTERVAL'"
   _exit
 fi
+MAILTO=$(echo "$MAILTO" | xargs)
+[ -n "$MAILTO" ] && require mail
 
 DATA=$(
   cat <<-END
@@ -225,7 +239,7 @@ get_ipv6() {
     # curl exits with code 3 when URL malformed
     # Consider it valid if accepted by curl
     # Use --head in case on a real HTTP server that returns bulk
-    curl -6 --head --connect-timeout 0.01 "[$_ip]" >/dev/null 2>&1
+    curl -f -6 --head --connect-timeout 0.01 "[$_ip]" >/dev/null 2>&1
     if [ $? -ne 3 ]; then
       echo "$_ip"
       return
@@ -236,10 +250,16 @@ get_ipv6() {
 }
 
 create_record() {
-  error "Creating a new $(echo "$1" | jq -r '.type') record for '$(echo "$1" | jq -r '.name')'"
-  response=$(curl_cf -d "$1" "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records") || return 1
-  echo "$response" | jq -r '.result.id'
-  error "Created $(echo "$1" | jq -r '.type') record '$(echo "$1" | jq -r '.name')': '$(echo "$response" | jq -r '.result.id')'"
+  type=$(echo "$1" | jq -r '.type')
+  name=$(echo "$1" | jq -r '.name')
+  error "Creating $type record for '$name'"
+  result=$(curl_cf -d "$1" "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records") || return 1
+  echo "$result" | jq -r '.result.id'
+  error "$(echo "$result" | jq)"
+  if [ -n "$MAILTO" ]; then
+    echo "$result" | jq | mail -s "Created $type record for '$name'" $MAILTO
+  fi
+  error "Created successfully"
 }
 
 renew_a_record() {
@@ -251,13 +271,16 @@ renew_a_record() {
   record=$(curl_cf "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$A_RECORD_ID") || return 1
   if [ "$(echo "$record" | jq -r '.result.content')" = "$1" ] &&
     [ "$(echo "$record" | jq -r '.result.proxied')" = "$(echo "$data" | jq -r '.proxied')" ]; then
-    error "No need to renew A record '$RECORD_NAME'"
+    error "No need to renew A record for '$RECORD_NAME'"
     return
   fi
-  error "Renewing A record '$RECORD_NAME'"
+  error "Renewing A record for '$RECORD_NAME'"
   result=$(curl_cf -X PUT -d "$data" \
     "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$A_RECORD_ID") || return 1
-  echo "$result" | jq >&2
+  error "$(echo "$result" | jq)"
+  if [ -n "$MAILTO" ]; then
+    echo "$result" | jq | mail -s "Renewed A record for '$RECORD_NAME'" $MAILTO
+  fi
   error "Renewed successfully"
 }
 
@@ -270,13 +293,16 @@ renew_aaaa_record() {
   record=$(curl_cf "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$AAAA_RECORD_ID") || return 1
   if [ "$(echo "$record" | jq -r '.result.content')" = "$1" ] &&
     [ "$(echo "$record" | jq -r '.result.proxied')" = "$(echo "$data" | jq -r '.proxied')" ]; then
-    error "No need to renew AAAA record '$RECORD_NAME'"
+    error "No need to renew AAAA record for '$RECORD_NAME'"
     return
   fi
-  error "Renewing AAAA record '$RECORD_NAME'"
+  error "Renewing AAAA record for '$RECORD_NAME'"
   result=$(curl_cf -X PUT -d "$data" \
     "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$AAAA_RECORD_ID") || return 1
-  echo "$result" | jq >&2
+  error "$(echo "$result" | jq)"
+  if [ -n "$MAILTO" ]; then
+    echo "$result" | jq | mail -s "Renewed AAAA record for '$RECORD_NAME'" $MAILTO
+  fi
   error "Renewed successfully"
 }
 
