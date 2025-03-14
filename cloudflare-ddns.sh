@@ -233,7 +233,7 @@ get_ipv4() {
 get_ipv6() {
   for service in $IPV6_SERVICES; do
     _ip=$(_curl -f -6 --connect-timeout 5 "$service" |
-      grep -o '^[0-9a-e:\.]\{7,45\}$')
+      grep -o '^[0-9a-fA-F:\.]\{7,45\}$')
     # Some servers may return an IPv4 address
     echo "$_ip" | grep -qs '^[0-9\.]*$' && continue
     # curl exits with code 3 when URL malformed
