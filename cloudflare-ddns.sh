@@ -205,16 +205,31 @@ ZONE_ID=$(curl_cf "https://api.cloudflare.com/client/v4/zones?name=$ZONE_NAME" |
 error "Found zone '$ZONE_NAME': '$ZONE_ID'"
 
 first_record_id() {
-  id=$(curl_cf "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=$1&type=$2" | jq -r ".result[] | .id") || return 1
-  [ "$(echo "$id" | wc -w | xargs)" -eq 0 ] && error "No $2 record of '$1' found" && return 1
-  echo "$id" | head -1
+  id=$(curl_cf "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=$1&type=$2") || return 1
+  echo "$id" | jq -r ".result[] | .id" | head -1
 }
 
-if [ $((RECORD_TYPE & 1)) -ne 0 ] && A_RECORD_ID=$(first_record_id "$RECORD_NAME" A); then
-  error "Found A record '$RECORD_NAME': '$A_RECORD_ID'"
+if [ $((RECORD_TYPE & 1)) -ne 0 ]; then
+  A_RECORD_ID=$(first_record_id "$RECORD_NAME" A) || {
+    error "Unable to find A record of '$RECORD_NAME'"
+    exit 1
+  }
+  if [ -n "$A_RECORD_ID" ]; then
+    error "Found A record '$RECORD_NAME': '$A_RECORD_ID'"
+  else
+    error "No A record of '$RECORD_NAME' found"
+  fi
 fi
-if [ $((RECORD_TYPE & 2)) -ne 0 ] && AAAA_RECORD_ID=$(first_record_id "$RECORD_NAME" AAAA); then
-  error "Found AAAA record '$RECORD_NAME': '$AAAA_RECORD_ID'"
+if [ $((RECORD_TYPE & 2)) -ne 0 ]; then
+  AAAA_RECORD_ID=$(first_record_id "$RECORD_NAME" AAAA) || {
+    error "Unable to find AAAA record of '$RECORD_NAME'"
+    exit 1
+  }
+  if [ -n "$AAAA_RECORD_ID" ]; then
+    error "Found AAAA record '$RECORD_NAME': '$AAAA_RECORD_ID'"
+  else
+    error "No AAAA record of '$RECORD_NAME' found"
+  fi
 fi
 
 get_ipv4() {
