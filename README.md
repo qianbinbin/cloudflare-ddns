@@ -12,7 +12,7 @@ Download the script:
 
 ```sh
 curl https://raw.githubusercontent.com/qianbinbin/cloudflare-ddns/refs/heads/master/cloudflare-ddns.sh \
--o ~/.local/bin/cloudflare-ddns
+  -o ~/.local/bin/cloudflare-ddns
 chmod +x ~/.local/bin/cloudflare-ddns
 ```
 
@@ -31,11 +31,11 @@ Supposing you want to update the record `ddns.example.com`, run as root to insta
 mkdir -p /usr/local/bin /usr/local/lib/systemd/system /usr/local/etc/cloudflare-ddns
 chmod 700 /usr/local/etc/cloudflare-ddns
 curl https://raw.githubusercontent.com/qianbinbin/cloudflare-ddns/refs/heads/master/cloudflare-ddns.sh \
--o /usr/local/bin/cloudflare-ddns \
-https://raw.githubusercontent.com/qianbinbin/cloudflare-ddns/refs/heads/master/cloudflare-ddns@.service \
--o /usr/local/lib/systemd/system/cloudflare-ddns@.service \
-https://raw.githubusercontent.com/qianbinbin/cloudflare-ddns/refs/heads/master/cloudflare-ddns.conf \
--o /usr/local/etc/cloudflare-ddns/ddns.example.com # save with the same name as your record
+  -o /usr/local/bin/cloudflare-ddns \
+  https://raw.githubusercontent.com/qianbinbin/cloudflare-ddns/refs/heads/master/cloudflare-ddns@.service \
+  -o /usr/local/lib/systemd/system/cloudflare-ddns@.service \
+  https://raw.githubusercontent.com/qianbinbin/cloudflare-ddns/refs/heads/master/cloudflare-ddns.conf \
+  -o /usr/local/etc/cloudflare-ddns/ddns.example.com # save with the same name as your record
 chmod +x /usr/local/bin/cloudflare-ddns
 systemctl daemon-reload
 ```
