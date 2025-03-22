@@ -3,10 +3,14 @@ Description=Dynamically Update DNS Records for %i in Cloudflare
 Documentation=https://github.com/qianbinbin/cloudflare-ddns
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=4
 
 [Service]
 EnvironmentFile=/usr/local/etc/cloudflare-ddns/%i
 ExecStart=/usr/local/bin/cloudflare-ddns $CFDDNS_OPTS
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
