@@ -234,7 +234,7 @@ fi
 
 get_ipv4() {
   for service in $IPV4_SERVICES; do
-    _ip=$(_curl -f -4 --connect-timeout 5 "$service" |
+    _ip=$(_curl -f -4 --connect-timeout 10 "$service" |
       grep -o '^[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}$')
     if [ -n "$_ip" ]; then
       echo "$_ip"
@@ -247,7 +247,7 @@ get_ipv4() {
 
 get_ipv6() {
   for service in $IPV6_SERVICES; do
-    _ip=$(_curl -f -6 --connect-timeout 5 "$service" |
+    _ip=$(_curl -f -6 --connect-timeout 10 "$service" |
       grep -o '^[0-9a-fA-F:\.]\{7,45\}$')
     # Some servers may return an IPv4 address
     echo "$_ip" | grep -qs '^[0-9\.]*$' && continue
